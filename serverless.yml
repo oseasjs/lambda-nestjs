@@ -1,0 +1,59 @@
+service: lambda-nestjs
+
+useDotenv: true
+
+plugins:
+  - serverless-offline
+  - serverless-localstack
+
+custom:
+  localstack:
+    debug: true
+    stages:
+      - local
+    endpointFile: localstack_endpoints.json
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  profile: local
+  iamRoleStatements:
+    # Allowing ListBucket to solve ListObjects Access Denied issue: 
+    # https://aws.amazon.com/premiumsupport/knowledge-center/s3-access-denied-listobjects-sync
+    - Effect: 'Allow'
+      Action:
+        - 's3:ListBucket'
+      Resource:
+        Fn::Join:
+          - ''
+          - - 'arn:aws:s3:::'
+            - ${env:BUCKET_NAME, 'default'}
+    - Effect: 'Allow'
+      Action:
+        - 's3:GetObject'
+        - 's3:PutObject'
+        - 's3:DeleteObject'
+        - 's3:ListObjects'
+        - 's3:ListObjectsV2'
+      Resource:
+        Fn::Join:
+          - ''
+          - - 'arn:aws:s3:::'
+            - ${env:BUCKET_NAME, 'default'}
+            - '/*'
+
+functions:
+  http:
+    handler: dist/main.api
+    events:
+      - http:
+          method: ANY
+          path: api
+  standalone:
+    handler: dist/main.standalone
+    events:
+      - http:
+          method: ANY
+          path: standalone
